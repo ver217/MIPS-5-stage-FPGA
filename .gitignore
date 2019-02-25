@@ -1,0 +1,7 @@
+cpu.sim/
+cpu.runs/
+cpu.cache/
+
+*.log
+*.jou
+*.str
