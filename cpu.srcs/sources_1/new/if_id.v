@@ -10,23 +10,6 @@ module if_id_interface(
     output [31:0] IR_out,
     output [31:0] PC_out
     );
-    // task clear;
-    // begin
-    //     IR_out <= 0;
-    //     PC_out <= 0;
-    // end
-    // endtask
-    // initial clear();
-    // always @(posedge CLK or posedge RST) begin
-    //     if (RST) clear();
-    //     else if (EN) begin 
-    //         if (CLR) clear();
-    //         else begin
-    //             IR_out <= IR;
-    //             PC_out <= PC;
-    //         end
-    //     end
-    // end
     wire [31:0] PC_in, IR_in;
     assign PC_in = CLR ? 0 : PC;
     assign IR_in = CLR ? 0 : IR;

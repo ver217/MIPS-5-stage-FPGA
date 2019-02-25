@@ -57,9 +57,9 @@ module id_ex_interface(
     assign A_in = CLR ? 0 : A;
     assign B_in = CLR ? 0 : B;
     assign Imm_in = CLR ? 0 : Imm;
-    reg3 WB_reg(WB_in, EN, CLK, RST, WB_out);
-    reg3 Mem_reg(Mem_in, EN, CLK, RST, Mem_out);
-    reg12 Ex_reg(Ex_in, EN, CLK, RST, Ex_out);
+    reg32 #(3) WB_reg(WB_in, EN, CLK, RST, WB_out);
+    reg32 #(3) Mem_reg(Mem_in, EN, CLK, RST, Mem_out);
+    reg32 #(12) Ex_reg(Ex_in, EN, CLK, RST, Ex_out);
     reg32 PC_reg(PC_in, EN, CLK, RST, PC_out);
     reg32 IR_reg(IR_in, EN, CLK, RST, IR_out);
     reg32 A_reg(A_in, EN, CLK, RST, A_out);

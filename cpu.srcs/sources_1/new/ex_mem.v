@@ -39,8 +39,8 @@ module ex_mem_interface(
     assign Alu_in = CLR ? 0 : Alu;
     assign B_in = CLR ? 0 : B;
     reg1 Halt_reg(Halt_in, EN, CLK, RST, Halt_out);
-    reg3 WB_reg(WB_in, EN, CLK, RST, WB_out);
-    reg3 Mem_reg(Mem_in, EN, CLK, RST, Mem_out);
+    reg32 #(3) WB_reg(WB_in, EN, CLK, RST, WB_out);
+    reg32 #(3) Mem_reg(Mem_in, EN, CLK, RST, Mem_out);
     reg32 PC_reg(PC_in, EN, CLK, RST, PC_out);
     reg32 IR_reg(IR_in, EN, CLK, RST, IR_out);
     reg32 Alu_reg(Alu_in, EN, CLK, RST, Alu_out);
