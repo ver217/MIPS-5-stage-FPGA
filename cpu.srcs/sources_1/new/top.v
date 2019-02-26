@@ -43,132 +43,21 @@ module top(
 
 	wire clk_N;
 	
+	reg[2:0] select = 0;
+	wire[31:0] address_display;
+	wire[31:0] data_out_display;
 
-    initial begin
+	initial begin
         pc <= 0;
         add4 <= 4;
         cnt <= 0;
     end
-	always @(posedge clk_N)
-		begin
-			if(!reset) begin
-			    if (en) begin
-                    pc = jmpMux;
-                    add4  =  pc + 4;
-                    cnt <= cnt + 1;
-				end
-			end
-		else	begin
-			pc <= 32'b0;
-			add4 <= 32'h4;
-			cnt <= 0;
-		end
-	end
-	
-	ctr mainctr(
-		.inst(inst),
-		.memToReg(memToReg),
-		.memWrite(memWrite),
-		.aluSrc(aluSrc),
-		.regWrite(regWrite),
-		.syscall(syscall),
-		.signedExt(signedExt),
-		.regDst(regDst),
-		.beq(beq),
-		.bne(bne),
-		.jr(jr),
-		.jmp(jmp),
-		.jal(jal),
-		.aluOp(aluOp),
-		.blez(blez),
-		.sb(sb)
+
+	var_f_divider var_f_divider(
+	   .clk_native(clk_native),
+	   .level(level),
+	   .clk_out(clk_N)
 	);
-	
-	alu alu(
-		.x(r1),
-		.y(aluSrcMux),
-		.aluOp(aluOp),
-		.shamt(inst[10:6]),
-		.result(aluRes),
-		.equal(equal),
-		.bleZero(bleZero)
-	);
-
-	wire[31:0] address_display;
-	wire[31:0] data_out_display;
-
-	up_down_ctr up_down_ctr(
-		.clk_native(clk_native),
-		.key_up(key_up),
-		.key_down(key_down),
-		.address(address_display)
-	);
-
-	Display show_mem_display(
-		.reset(reset),
-		.clk(clk_native),
-		.data(data_out_display),
-		.seg(mem_seg),
-		.AN(mem_AN)
-	);
-	
-	ram dmem(
-		.address(aluRes),
-		.__address_display(address_display),
-		.data_in(r2),
-		.clk(clk_N),
-		.WE(memWrite),
-		.reset(reset),
-		.mode({1'b0, sb}),
-		.data_out(memOut),
-		.__data_out_display(data_out_display)
-	);
-
-	rom imem(
-		.address(pc), 
-		.data_out(inst)
-	 );
-
-	regFile regfile(
-		.RsAddr(sysMux),
-		.RtAddr(dispMux),
-		.clk(clk_N), 
-		.reset(reset), 
-		.regWriteAddr(jalMux), 
-		.regWriteData(jalMux1), 
-		.regWriteEn(regWrite),
-		.RsData(r1),
-		.RtData(r2)
-	);
-	
-	signext signext(
-		.inst(inst[15:0]),
-		.data(signedExted)
-	 );
-
-	zeroext zeroext(
-		.inst(inst[15:0]),
-		.data(zeroExted)
-	);
-
-	wire display;
-
-	pause pause(
-             .clk(clk_N),
-             .sys_clk(clk_native),
-             .syscall(syscall),
-             .r1(r1),
-             .reset(reset),
-             .r2(r2),
-             .en(en),
-			 .display(display),
-             .Go(Go),
-             .AN(pause_AN),
-             .seg(pause_seg)
-      );
-
-
-	reg[2:0] select = 0;
 
 	always @(
 		show_clock_count,
@@ -231,11 +120,120 @@ module top(
 		.AN(counter_AN)
 	);
 	
-	var_f_divider var_f_divider(
-	   .clk_native(clk_native),
-	   .level(level),
-	   .clk_out(clk_N)
+	up_down_ctr up_down_ctr(
+		.clk_native(clk_native),
+		.key_up(key_up),
+		.key_down(key_down),
+		.address(address_display)
 	);
+
+	Display show_mem_display(
+		.reset(reset),
+		.clk(clk_native),
+		.data(data_out_display),
+		.seg(mem_seg),
+		.AN(mem_AN)
+	);
+	 
+	always @(posedge clk_N)
+		begin
+			if(!reset) begin
+			    if (en) begin
+                    pc = jmpMux;
+                    add4  =  pc + 4;
+                    cnt <= cnt + 1;
+				end
+			end
+		else	begin
+			pc <= 32'b0;
+			add4 <= 32'h4;
+			cnt <= 0;
+		end
+	end
+	
+	ctr mainctr(
+		.inst(inst),
+		.memToReg(memToReg),
+		.memWrite(memWrite),
+		.aluSrc(aluSrc),
+		.regWrite(regWrite),
+		.syscall(syscall),
+		.signedExt(signedExt),
+		.regDst(regDst),
+		.beq(beq),
+		.bne(bne),
+		.jr(jr),
+		.jmp(jmp),
+		.jal(jal),
+		.aluOp(aluOp),
+		.blez(blez),
+		.sb(sb)
+	);
+	
+	alu alu(
+		.x(r1),
+		.y(aluSrcMux),
+		.aluOp(aluOp),
+		.shamt(inst[10:6]),
+		.result(aluRes),
+		.equal(equal),
+		.bleZero(bleZero)
+	);
+
+	ram dmem(
+		.address(aluRes),
+		.__address_display(address_display),
+		.data_in(r2),
+		.clk(clk_N),
+		.WE(memWrite),
+		.reset(reset),
+		.mode({1'b0, sb}),
+		.data_out(memOut),
+		.__data_out_display(data_out_display)
+	);
+
+	rom imem(
+		.address(pc), 
+		.data_out(inst)
+	 );
+
+	regFile regfile(
+		.RsAddr(sysMux),
+		.RtAddr(dispMux),
+		.clk(clk_N), 
+		.reset(reset), 
+		.regWriteAddr(jalMux), 
+		.regWriteData(jalMux1), 
+		.regWriteEn(regWrite),
+		.RsData(r1),
+		.RtData(r2)
+	);
+	
+	signext signext(
+		.inst(inst[15:0]),
+		.data(signedExted)
+	 );
+
+	zeroext zeroext(
+		.inst(inst[15:0]),
+		.data(zeroExted)
+	);
+
+	wire display;
+
+	pause pause(
+		.clk(clk_N),
+		.sys_clk(clk_native),
+		.syscall(syscall),
+		.r1(r1),
+		.reset(reset),
+		.r2(r2),
+		.en(en),
+		.display(display),
+		.Go(Go),
+		.AN(pause_AN),
+		.seg(pause_seg)
+      );
 
 	assign branch = (beq & equal) | (bne & (~equal)) | (blez & bleZero);
 	assign jmpMux = jmp ? jrMux : branchMux;
