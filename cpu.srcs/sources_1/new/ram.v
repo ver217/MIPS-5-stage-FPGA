@@ -62,7 +62,7 @@ module ram(
     initial begin
         for (i = 0; i < SIZE; i = i + 1) mem[i] <= 0;
     end
-    always @(negedge clk) begin
+    always @(negedge clk) begin	// TODO: async reset
         if (WE) begin
             if (mode == 0)
                 mem[address[11:2]] = data_in;

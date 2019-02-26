@@ -1,7 +1,7 @@
 module top(
     input clk_native, 
-    input RST,
-    input Go,
+    input reset,
+    input _go,
 	input show_clock_count,
 	input show_unconditional_branch_count,
 	input show_conditional_branch_count,
@@ -12,13 +12,19 @@ module top(
 	output reg[7:0] AN,
     output reg[7:0] seg
     );
-
+	// TODO: regfile, ram, pause module async reset
 	wire CLK;
 	var_f_divider var_f_divider(
 	   .clk_native(clk_native),
 	   .level(level),
 	   .clk_out(CLK)
 	);
+
+	wire RST;
+	anti_shake as_reset(clk_native, reset, RST);
+	
+	wire Go;
+	anti_shake as_go(clk_native, _go, Go);
 	
     wire EN;
 	wire PC_EN, EX_JMP, Branch, EX_JR;

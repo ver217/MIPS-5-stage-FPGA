@@ -94,7 +94,7 @@ module Display(reset,clk,data,seg, AN);//数码管显示模�?
            data32_4=0;//计数   
            end
        divider u_divider(clk, ck);//实例化分频器 
-       always @(posedge ck) 
+       always @(posedge ck) 	// TODO: async reset
 	    begin//上升�? 
         num=num+1; 
         if(num==8)

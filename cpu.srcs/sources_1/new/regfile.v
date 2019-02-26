@@ -17,7 +17,7 @@ module regFile(
 	   for (i = 0; i < 32; i = i + 1)
             regs[i] <= 0;
     end
-	always @(negedge clk) begin
+	always @(negedge clk) begin	// TODO: async reset
 		if (!reset)	begin
 			if (regWriteEn == 1)
 				regs[regWriteAddr] <= regWriteData;
