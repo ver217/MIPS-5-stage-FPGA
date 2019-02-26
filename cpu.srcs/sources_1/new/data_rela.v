@@ -31,9 +31,9 @@ module data_rela(
     assign s_mem_rela = MemWrite & (R2 != 0) & (R2 == Mem_WriteReg) & Mem_RegWrite;
     assign LoadUse = (r1_ex_rela | r2_ex_rela | s_ex_rela) & Ex_MemToReg;
 
-    prio_encoder r1_encoder({r1_ex_rela, ~Mem_MemToReg & r1_mem_rela, Memr2_MemToReg & r1_mem_rela, 1}, r1_encoded);
-    prio_encoder r2_encoder({r2_ex_rela, ~Mem_MemToReg & r2_mem_rela, Mem_MemToReg & r2_mem_rela, 1}, r2_encoded);
-    prio_encoder s_encoder({s_ex_rela, ~Mem_MemToReg & s_mem_rela, Mem_MemToReg & s_mem_rela, 1}, s_encoded);
+    prio_encoder r1_encoder({r1_ex_rela, ~Mem_MemToReg & r1_mem_rela, Mem_MemToReg & r1_mem_rela, 1'b1}, r1_encoded);
+    prio_encoder r2_encoder({r2_ex_rela, ~Mem_MemToReg & r2_mem_rela, Mem_MemToReg & r2_mem_rela, 1'b1}, r2_encoded);
+    prio_encoder s_encoder({s_ex_rela, ~Mem_MemToReg & s_mem_rela, Mem_MemToReg & s_mem_rela, 1'b1}, s_encoded);
 
     reg32 #(2) r1_reg(r1_encoded, EN, CLK, RST, R1_Forward);
     reg32 #(2) r2_reg(r2_encoded, EN, CLK, RST, R2_Forward);

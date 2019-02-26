@@ -1,6 +1,6 @@
 module top(
     input clk_native, 
-    input reset,
+    input RST,
     input Go,
 	input show_clock_count,
 	input show_unconditional_branch_count,
@@ -12,26 +12,274 @@ module top(
 	output reg[7:0] AN,
     output reg[7:0] seg
     );
-	reg [31:0] pc, add4, cnt;
-	wire branch;
-	wire [31:0] inst;
-	wire [31:0] jmpMux, branchMux, jrMux, aluSrcMux, signedExtMux, memToRegMux, jalMux1;
-	wire [4:0] sysMux, dispMux, regDstMux, jalMux;
-	// wire for controller
-	wire memToReg, memWrite, aluSrc, regWrite, syscall, signedExt, regDst, beq, bne, jr, jmp, jal, blez, sb;
-	wire [3:0] aluOp;
-	// wire for alu
-	wire equal, bleZero;
-	wire [31:0] aluRes;
-	// wire for rom
+
+	wire CLK;
+	var_f_divider var_f_divider(
+	   .clk_native(clk_native),
+	   .level(level),
+	   .clk_out(CLK)
+	);
+	
+    wire EN;
+	wire PC_EN, EX_JMP, Branch, EX_JR;
+	wire [31:0] PC, BranchAddr, JmpAddr, EX_R1, PC_in;
+	assign PC_in = EX_JMP ? (EX_JR ? EX_R1 : JmpAddr) : (Branch ? BranchAddr : PC + 4);
+	reg32 PC_reg(PC_in, PC_EN, CLK, RST, PC);
+
+	wire [31:0] IF_IR;
+	rom imem(
+		.address(PC), 
+		.data_out(IF_IR)
+	);
+
+	wire IF_ID_Clr, IF_ID_EN;
+	wire [31:0] ID_IR, ID_PC;
+	if_id_interface IF_ID(IF_IR, PC + 4, CLK, IF_ID_Clr, IF_ID_EN, RST, ID_IR, ID_PC);
+
+	wire R1_Used, R2_Used;
+	regsrc_used regsrc_used(ID_IR[31:26], ID_IR[5:0], R1_Used, R2_Used);
+
+	wire ID_MemToReg, ID_MemWrite, ID_AluSrc, ID_RegWrite, ID_Syscall, ID_SignedExt, ID_RegDst, ID_Beq, ID_Bne, ID_JR, ID_JMP, ID_JAL, ID_Blez, ID_SB;
+	wire [3:0] ID_AluOp;
+	ctr mainctr(
+		.inst(ID_IR),
+		.memToReg(ID_MemToReg),
+		.memWrite(ID_MemWrite),
+		.aluSrc(ID_AluSrc),
+		.regWrite(ID_RegWrite),
+		.syscall(ID_Syscall),
+		.signedExt(ID_SignedExt),
+		.regDst(ID_RegDst),
+		.beq(ID_Beq),
+		.bne(ID_Bne),
+		.jr(ID_JR),
+		.jmp(ID_JMP),
+		.jal(ID_JAL),
+		.aluOp(ID_AluOp),
+		.blez(ID_Blez),
+		.sb(ID_SB)
+	);
+
+	wire [31:0] ID_Imm;
+	signext signext(ID_IR[15:0], ID_Imm);
+
+	wire [4:0] R1_Addr, R2_Addr, W_Addr;
+	wire WB_RegDst, WB_JAL, WB_RegWrite;
+	wire [31:0] WB_IR, WB_PC, Mem_ReadData, ID_R1, ID_R2;
+	assign R1_Addr = ID_Syscall ? 2 : ID_IR[25:21];
+	assign R2_Addr = ID_Syscall ? 4 : ID_IR[20:16];
+	assign W_Addr = WB_JAL ? 31 : (WB_RegDst ? WB_IR[15:11] : WB_IR[20:16]);
+	regFile regfile(
+		.RsAddr(R1_Addr),
+		.RtAddr(R2_Addr),
+		.clk(CLK), 
+		.reset(RST), 
+		.regWriteAddr(W_Addr), 
+		.regWriteData(WB_JAL ? WB_PC : Mem_ReadData), 
+		.regWriteEn(WB_RegWrite),
+		.RsData(ID_R1),
+		.RtData(ID_R2)
+	);
+
+	wire HaltOrRST, ID_EX_Clr, ID_EX_EN;
+	wire EX_MemToReg, EX_MemWrite, EX_AluSrc, EX_RegWrite, EX_Syscall, EX_SignedExt, EX_RegDst, EX_Beq, EX_Bne, EX_JAL, EX_Blez, EX_SB;
+	wire [3:0] EX_AluOp;
+	wire [31:0] EX_IR, EX_PC, EX_R2, EX_Imm;
+	id_ex_interface ID_EX(
+		.RegWrite(ID_RegWrite),
+		.RegDst(ID_RegDst),
+		.JAL(ID_JAL),
+		.SB(ID_SB),
+		.MemToReg(ID_MemToReg),
+		.MemWrite(ID_MemWrite),
+		.AluOp(ID_AluOp),
+		.AluSrcB(ID_AluSrc),
+		.SignedExt(ID_SignedExt),
+		.Syscall(ID_Syscall),
+		.JMP(ID_JMP),
+		.JR(ID_JR),
+		.Beq(ID_Beq),
+		.Bne(ID_Bne),
+		.Blez(ID_Blez),
+		.IR(ID_IR),
+		.PC(ID_PC),
+		.A(ID_R1),
+		.B(ID_R2),
+		.Imm(ID_Imm),
+		.CLK(CLK),
+		.CLR(ID_EX_Clr),
+		.EN(ID_EX_EN),
+		.RST(HaltOrRST),
+		.RegWrite_out(EX_RegWrite),
+		.RegDst_out(EX_RegDst),
+		.JAL_out(EX_JAL),
+		.SB_out(EX_SB),
+		.MemToReg_out(EX_MemToReg),
+		.MemWrite_out(EX_MemWrite),
+		.AluOp_out(EX_AluOp),
+		.AluSrcB_out(EX_AluSrc),
+		.SignedExt_out(EX_SignedExt),
+		.Syscall_out(EX_Syscall),
+		.JMP_out(EX_JMP),
+		.JR_out(EX_JR),
+		.Beq_out(EX_Beq),
+		.Bne_out(EX_Bne),
+		.Blez_out(EX_Blez),
+		.IR_out(EX_IR),
+		.PC_out(EX_PC),
+		.A_out(EX_R1),
+		.B_out(EX_R2),
+		.Imm_out(EX_Imm)
+	);
+
+	wire [4:0] EX_WriteRegAddr;
+	assign EX_WriteRegAddr = EX_JAL ? 31 : (EX_RegDst ? EX_IR[15:11] : EX_IR[20:16]);
+
+	assign BranchAddr = (EX_Imm << 2) + EX_PC;
+
+	wire [1:0] R1_Forward;
+	wire [31:0] EX_Alu, Mem_Alu, AluA;
+	assign AluA = R1_Forward == 3 ? EX_Alu : 
+					R1_Forward == 2 ? Mem_Alu :
+					R1_Forward == 1 ? Mem_ReadData :
+					EX_R1;
+	wire [1:0] R2_Forward;
+	wire [31:0] AluB;
+	assign AluB = R2_Forward == 3 ? EX_Alu : 
+					R2_Forward == 2 ? Mem_Alu :
+					R2_Forward == 1 ? Mem_ReadData :
+					(EX_AluSrc ? (EX_SignedExt ? EX_Imm : (32'h0000ffff & EX_Imm)) : EX_R2);
+	wire [1:0] StoreForward;
+	wire [31:0] EX_B;
+	assign EX_B = StoreForward == 3 ? EX_Alu :
+					StoreForward == 2 ? Mem_Alu :
+					StoreForward == 1 ? Mem_ReadData :
+					EX_R2;
+
+	wire Equal, Lez;
+	wire [31:0] AluRes;
+	alu alu(
+		.x(AluA),
+		.y(AluB),
+		.aluOp(EX_AluOp),
+		.shamt(EX_IR[10:6]),
+		.result(AluRes),
+		.equal(Equal),
+		.bleZero(Lez)
+	);
+
+	assign JmpAddr = {EX_PC[31:28], EX_IR[26:0], 2'b00};
+
+	wire Halt, Disp;
+	assign Halt = (AluA != 34) & EX_Syscall;
+	assign Disp = (AluA == 34) & EX_Syscall;
+
+	wire MEM_Halt, MEM_RegWrite, MEM_RegDst, MEM_JAL, MEM_SB, MEM_MemToReg, MEM_MemWrite;
+	wire [31:0] MEM_IR, MEM_PC, MEM_B;
+	ex_mem_interface EX_MEM(
+		.Halt(Halt),
+		.RegWrite(EX_RegWrite),
+		.RegDst(EX_RegDst),
+		.JAL(EX_JAL),
+		.SB(EX_SB),
+		.MemToReg(EX_MemToReg),
+		.MemWrite(EX_MemWrite),
+		.IR(EX_IR),
+		.PC(EX_PC),
+		.Alu(AluRes),
+		.B(EX_B),
+		.CLK(CLK),
+		.CLR(1'b0),
+		.EN(EN),
+		.RST(HaltOrRST),
+		.Halt_out(MEM_Halt),
+		.RegWrite_out(MEM_RegWrite),
+		.RegDst_out(MEM_RegDst),
+		.JAL_out(MEM_JAL),
+		.SB_out(MEM_SB),
+		.MemToReg_out(MEM_MemToReg),
+		.MemWrite_out(MEM_MemWrite),
+		.IR_out(MEM_IR),
+		.PC_out(MEM_PC),
+		.Alu_out(EX_Alu),
+		.B_out(MEM_B)
+	);
+
+	wire [4:0] Mem_WriteRegAddr;
+	assign Mem_WriteRegAddr = MEM_JAL ? 31 : (MEM_RegDst ? MEM_IR[15:11] : MEM_IR[20:16]);
+
 	wire [31:0] memOut;
-	// wire for register
-	wire [31:0] r1, r2;
-	// wire for ext
-	wire [31:0] signedExted;
-	wire [31:0] zeroExted;
-	wire [31:0] data;
-    wire en;
+    wire[31:0] address_display;
+    wire[31:0] data_out_display;
+	ram dmem(
+		.address(EX_Alu),
+		.__address_display(address_display),
+		.data_in(MEM_B),
+		.clk(CLK),
+		.WE(MEM_MemWrite),
+		.reset(RST),
+		.mode({1'b0, MEM_SB}),
+		.data_out(memOut),
+		.__data_out_display(data_out_display)
+	);
+
+	wire WB_Halt;
+	mem_wb_interface MEM_WB(
+		.Halt(MEM_Halt),
+		.RegWrite(MEM_RegWrite),
+		.RegDst(MEM_RegDst),
+		.JAL(MEM_JAL),
+		.IR(MEM_IR),
+		.PC(MEM_PC),
+		.Alu(EX_Alu),
+		.MD(MEM_MemToReg ? memOut : EX_Alu),
+		.CLK(CLK),
+		.CLR(1'b0),
+		.EN(EN),
+		.RST(RST),
+		.Halt_out(WB_Halt),
+		.RegWrite_out(WB_RegWrite),
+		.RegDst_out(WB_RegDst),
+		.JAL_out(WB_JAL),
+		.IR_out(WB_IR),
+		.PC_out(WB_PC),
+		.Alu_out(Mem_Alu),
+		.MD_out(Mem_ReadData)
+	);
+
+	assign EN = ~(~Go & WB_Halt);
+	assign HaltOrRST = ~EN | RST;
+
+	wire BubbleClr, LoadUse;
+	assign BubbleClr = EX_JMP | Branch;
+	assign IF_ID_Clr = BubbleClr;
+	assign ID_EX_Clr = BubbleClr | LoadUse;
+	assign Branch = (Equal & EX_Beq) | (~Equal & EX_Bne) | (Lez & EX_Blez);
+	assign PC_EN = (EN & ~LoadUse & ~Halt) | (Halt & Go);
+	assign IF_ID_EN = PC_EN;
+	assign ID_EX_EN = ~Halt;
+
+	data_rela data_rela(
+		.R1(R1_Addr),
+		.R1_Used(R1_Used),
+		.R2(R2_Addr),
+		.R2_Used(R2_Used),
+		.Ex_WriteReg(EX_WriteRegAddr),
+		.Ex_RegWrite(EX_RegWrite),
+		.Ex_MemToReg(EX_MemToReg),
+		.Mem_WriteReg(Mem_WriteRegAddr),
+		.Mem_RegWrite(MEM_RegWrite),
+		.Mem_MemToReg(MEM_MemToReg),
+		.MemWrite(ID_MemWrite),
+		.EN(ID_EX_EN),
+		.CLK(CLK),
+		.RST(HaltOrRST),
+		.LoadUse(LoadUse),
+		.R1_Forward(R1_Forward),
+		.R2_Forward(R2_Forward),
+		.StoreForward(StoreForward)
+	);
+
     wire [7:0] pause_AN;
     wire [7:0] pause_seg;
 
@@ -41,30 +289,15 @@ module top(
 	wire [7:0] mem_AN;
     wire [7:0] mem_seg;
 
-	wire clk_N;
-	
 	reg[2:0] select = 0;
-	wire[31:0] address_display;
-	wire[31:0] data_out_display;
 
-	initial begin
-        pc <= 0;
-        add4 <= 4;
-        cnt <= 0;
-    end
-
-	var_f_divider var_f_divider(
-	   .clk_native(clk_native),
-	   .level(level),
-	   .clk_out(clk_N)
-	);
 
 	always @(
 		show_clock_count,
 		show_unconditional_branch_count,
 		show_conditional_branch_count,
 		show_mem,
-		reset
+		RST
 	) begin
 		casez ({
 			show_mem,
@@ -80,7 +313,7 @@ module top(
 			default: select = 3'b111;
 		endcase
 		
-		if (reset) select = 3'b111;
+		if (RST) select = 3'b111;
 	end
 
 	always @(
@@ -109,12 +342,11 @@ module top(
 
 	Information_display info(
 		.clk(clk_native),
-		.clk_N(clk_N),
-      	.reset(reset),
-		.conditional_branch_counter_en(branch & en),
-		
-		.unconditional_branch_counter_en(jmp & en),
-		.clock_counter_en(en),
+		.clk_N(CLK),
+      	.reset(RST),
+		.conditional_branch_counter_en(Branch & PC_EN),
+		.unconditional_branch_counter_en(EX_JMP & PC_EN),
+		.clock_counter_en(EN),
 		.select(select),
 		.display(counter_seg),
 		.AN(counter_AN)
@@ -128,123 +360,21 @@ module top(
 	);
 
 	Display show_mem_display(
-		.reset(reset),
+		.reset(RST),
 		.clk(clk_native),
 		.data(data_out_display),
 		.seg(mem_seg),
 		.AN(mem_AN)
 	);
-	 
-	always @(posedge clk_N)
-		begin
-			if(!reset) begin
-			    if (en) begin
-                    pc = jmpMux;
-                    add4  =  pc + 4;
-                    cnt <= cnt + 1;
-				end
-			end
-		else	begin
-			pc <= 32'b0;
-			add4 <= 32'h4;
-			cnt <= 0;
-		end
-	end
-	
-	ctr mainctr(
-		.inst(inst),
-		.memToReg(memToReg),
-		.memWrite(memWrite),
-		.aluSrc(aluSrc),
-		.regWrite(regWrite),
-		.syscall(syscall),
-		.signedExt(signedExt),
-		.regDst(regDst),
-		.beq(beq),
-		.bne(bne),
-		.jr(jr),
-		.jmp(jmp),
-		.jal(jal),
-		.aluOp(aluOp),
-		.blez(blez),
-		.sb(sb)
-	);
-	
-	alu alu(
-		.x(r1),
-		.y(aluSrcMux),
-		.aluOp(aluOp),
-		.shamt(inst[10:6]),
-		.result(aluRes),
-		.equal(equal),
-		.bleZero(bleZero)
+
+	wire [31:0] LedData;
+	reg32 LedData_reg(AluB, Disp, CLK, RST, LedData);
+	Display show_syscall_display(
+		.reset(RST),
+		.clk(clk_native),
+		.data(LedData),
+		.seg(pause_seg),
+		.AN(pause_AN)
 	);
 
-	ram dmem(
-		.address(aluRes),
-		.__address_display(address_display),
-		.data_in(r2),
-		.clk(clk_N),
-		.WE(memWrite),
-		.reset(reset),
-		.mode({1'b0, sb}),
-		.data_out(memOut),
-		.__data_out_display(data_out_display)
-	);
-
-	rom imem(
-		.address(pc), 
-		.data_out(inst)
-	 );
-
-	regFile regfile(
-		.RsAddr(sysMux),
-		.RtAddr(dispMux),
-		.clk(clk_N), 
-		.reset(reset), 
-		.regWriteAddr(jalMux), 
-		.regWriteData(jalMux1), 
-		.regWriteEn(regWrite),
-		.RsData(r1),
-		.RtData(r2)
-	);
-	
-	signext signext(
-		.inst(inst[15:0]),
-		.data(signedExted)
-	 );
-
-	zeroext zeroext(
-		.inst(inst[15:0]),
-		.data(zeroExted)
-	);
-
-	wire display;
-
-	pause pause(
-		.clk(clk_N),
-		.sys_clk(clk_native),
-		.syscall(syscall),
-		.r1(r1),
-		.reset(reset),
-		.r2(r2),
-		.en(en),
-		.display(display),
-		.Go(Go),
-		.AN(pause_AN),
-		.seg(pause_seg)
-      );
-
-	assign branch = (beq & equal) | (bne & (~equal)) | (blez & bleZero);
-	assign jmpMux = jmp ? jrMux : branchMux;
-	assign branchMux = branch ? (signedExted << 2) + add4 : add4;
-	assign jrMux = jr ? r1 : {add4[31:28], inst[25:0], 2'b00};
-	assign aluSrcMux = aluSrc ? signedExtMux : r2;
-	assign signedExtMux = signedExt ? signedExted : zeroExted;
-	assign memToRegMux = memToReg ? memOut : aluRes;
-	assign jalMux1 = jal ? add4 : memToRegMux;
-	assign sysMux = syscall ? 2 : inst[25:21];
-	assign dispMux = display ? 4 : inst[20:16];
-	assign regDstMux = regDst ? inst[15:11] : inst[20:16];
-	assign jalMux = jal ? 31 : regDstMux;
 endmodule

@@ -27,12 +27,15 @@ module top_sim();
     wire[7:0] seg;
     top TOP(
         .clk_native(clk),
-        .reset(0),
+        .RST(0),
         .Go(Go),
         .show_clock_count(0),
         .show_unconditional_branch_count(0),
         .show_conditional_branch_count(0),
         .show_mem(0),
+        .key_up(0),
+        .key_down(0),
+        .level(31),
         .AN(AN),
         .seg(seg)
        );
