@@ -225,7 +225,7 @@ module top(
 		.clk(CLK),
 		.WE(MEM_MemWrite),
 		.reset(RST),
-		.mode({1'b0, MEM_SB}),
+		.mode(MEM_SB ? 2'b10 : 2'b00),
 		.data_out(memOut),
 		.__data_out_display(data_out_display)
 	);

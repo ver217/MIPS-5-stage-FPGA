@@ -22,6 +22,7 @@ module ctr(
 			0:	begin	// R type
 				case (inst[5:0])	// inst[5:0]
 					0: aluOp <= 0; // sll
+					4: aluOp <= 0; // sllv
 					3: aluOp <= 1; // sra
 					2: aluOp <= 2; // srl
 					32: aluOp <= 5; // add
@@ -248,6 +249,23 @@ module ctr(
 				aluOp <= 5;
 				sb <= 0;
 			end
+			37: begin	// lh
+				memToReg <= 1;
+				memWrite <= 0;
+				aluSrc <= 1;
+				regWrite <= 1;
+				syscall <= 0;
+				signedExt <= 1;
+				regDst <= 0;
+				beq <= 0;
+				bne <= 0;
+				blez <= 0;
+				jr <= 0;
+				jmp <= 0;
+				jal <= 0;	
+				aluOp <= 5;
+				sb <= 1;
+			end
 			43: begin	// sw
 				memToReg <= 0;
 				memWrite <= 1;
@@ -264,23 +282,6 @@ module ctr(
 				jal <= 0;	
 				aluOp <= 5;
 				sb <= 0;
-			end
-			40: begin	// sb
-				memToReg <= 0;
-				memWrite <= 1;
-				aluSrc <= 1;
-				regWrite <= 0;
-				syscall <= 0;
-				signedExt <= 1;
-				regDst <= 0;
-				beq <= 0;
-				bne <= 0;
-				blez <= 0;
-				jr <= 0;
-				jmp <= 0;
-				jal <= 0;	
-				aluOp <= 5;
-				sb <= 1;
 			end
 			default: begin
 				aluOp = 0;
