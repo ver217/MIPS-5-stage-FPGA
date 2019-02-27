@@ -10,7 +10,7 @@
          </top_modules>
       </db_ref>
    </db_ref_list>
-   <WVObjectSize size="20" />
+   <WVObjectSize size="21" />
    <wvobject db_ref_id="1" fp_name="/top_sim/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -19,14 +19,19 @@
       <obj_property name="ElementShortName">Go</obj_property>
       <obj_property name="ObjectShortName">Go</obj_property>
    </wvobject>
-   <wvobject db_ref_id="1" fp_name="/top_sim/TOP/info/counter/cycle_number" type="array">
-      <obj_property name="ElementShortName">cycle_number[31:0]</obj_property>
-      <obj_property name="ObjectShortName">cycle_number[31:0]</obj_property>
-      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
-   </wvobject>
    <wvobject db_ref_id="1" fp_name="/top_sim/TOP/PC" type="array">
       <obj_property name="ElementShortName">PC[31:0]</obj_property>
       <obj_property name="ObjectShortName">PC[31:0]</obj_property>
+      <obj_property name="Radix">HEXRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/top_sim/TOP/clock_count" type="array">
+      <obj_property name="ElementShortName">clock_count[31:0]</obj_property>
+      <obj_property name="ObjectShortName">clock_count[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject db_ref_id="1" fp_name="/top_sim/TOP/LedData" type="array">
+      <obj_property name="ElementShortName">LedData[31:0]</obj_property>
+      <obj_property name="ObjectShortName">LedData[31:0]</obj_property>
       <obj_property name="Radix">HEXRADIX</obj_property>
    </wvobject>
    <wvobject db_ref_id="1" fp_name="/top_sim/TOP/dmem/mem[0]" type="array">
