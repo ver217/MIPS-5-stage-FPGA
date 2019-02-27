@@ -18,7 +18,7 @@ unconditional_branch_number=0;
 conditional_branch_number=0;
 end
 
-always@(posedge clk)begin
+always@(posedge clk or posedge reset)begin
     if(reset==1) begin 
         cycle_number=0;
         unconditional_branch_number=0;
