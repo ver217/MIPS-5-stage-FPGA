@@ -12,7 +12,7 @@ module top(
 	output reg[7:0] AN,
     output reg[7:0] seg
     );
-	// TODO: regfile, ram, pause module async reset
+	
 	wire CLK;
 	var_f_divider var_f_divider(
 	   .clk_native(clk_native),
@@ -24,7 +24,7 @@ module top(
 	anti_shake as_reset(clk_native, reset, RST);
 	
 	wire Go;
-	anti_shake as_go(clk_native, _go, Go);
+	anti_shake as_go(CLK, _go, Go);
 	
     wire EN;
 	wire PC_EN, EX_JMP, Branch, EX_JR;
