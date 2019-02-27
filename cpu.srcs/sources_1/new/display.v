@@ -131,26 +131,3 @@ module Display(reset,clk,data,seg, AN);//数码管显示模�?
         decoder3_8 u_decoder3_8(num,AN);//数码�?
         pattern u_pattern(data32_4,seg);                     
 endmodule
-
-module pause(clk,sys_clk,syscall,r1,reset,r2,en,display,Go,AN,seg);
-        input clk;
-        input sys_clk;
-        input syscall,reset,Go;
-        input [31:0]r1;
-        input [31:0]r2;
-        reg[31:0] data;
-        output en;
-        output display;
-        output [7:0]AN;
-        output [7:0]seg;
-        wire s1;
-        assign s1=(r1==34)?1:0;
-        assign en=(~((~Go)&syscall&(~s1)));
-        assign display = s1 & syscall;
-        Display u_Display(reset,sys_clk,data,seg, AN);
-        always @(posedge clk)begin
-              if(s1&syscall) data=r2;
-        end
-        
-
-endmodule
