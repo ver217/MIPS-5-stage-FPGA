@@ -114,7 +114,7 @@ module ctr(
 				jal <= 0;
 				sb <= 0;
 			end
-			6: begin	// blez
+			7: begin	// bgtz
 				memToReg <= 0;
 				memWrite <= 0;
 				aluSrc <= 0;
