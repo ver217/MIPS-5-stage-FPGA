@@ -287,89 +287,63 @@ module top(
 		.StoreForward(StoreForward)
 	);
 
-    wire [7:0] pause_AN;
-    wire [7:0] pause_seg;
-
-	wire [7:0] counter_AN;
-    wire [7:0] counter_seg;
-
-	wire [7:0] mem_AN;
-    wire [7:0] mem_seg;
-
-	reg[2:0] select = 0;
 	wire [31:0] LedData;	
+	wire [7:0] sys_AN, sys_seg;
 	reg32 LedData_reg(AluB, Disp, CLK, RST, LedData);
 	Display show_syscall_display(
 		.reset(RST),
 		.clk(clk_native),
 		.data(LedData),
-		.seg(pause_seg),
-		.AN(pause_AN)
+		.seg(sys_seg),
+		.AN(sys_AN)
 	);
 
-	assign seg = pause_seg;
-	assign AN = pause_AN;
+	wire [31:0] clock_count;
+	wire [7:0] clock_seg, clock_AN;
+	counter clock_counter(EN, CLK, RST, clock_count);
+	Display show_clock_count_display(
+		.reset(RST),
+		.clk(clk_native),
+		.data(clock_count),
+		.seg(clock_seg),
+		.AN(clock_AN)
+	);
 
-	// always @(
-	// 	show_clock_count,
-	// 	show_unconditional_branch_count,
-	// 	show_conditional_branch_count,
-	// 	show_mem,
-	// 	RST
-	// ) begin
-	// 	casez ({
-	// 		show_mem,
-	// 		show_conditional_branch_count,
-	// 		show_unconditional_branch_count,
-	// 		show_clock_count
-	// 	})
-	// 		4'b1ZZZ: select = 3;
-	// 		4'b01ZZ: select = 2;
-	// 		4'b001Z: select = 1;
-	// 		4'b0001: select = 0;
-	// 		4'b0000: select = 4;
-	// 		default: select = 3'b111;
-	// 	endcase
-		
-	// 	if (RST) select = 3'b111;
-	// end
+	wire [31:0] jmp_count;
+	wire [7:0] jmp_seg, jmp_AN;
+	counter jmp_counter(EX_JMP & PC_EN, CLK, RST, jmp_count);
+	Display show_jmp_count_display(
+		.reset(RST),
+		.clk(clk_native),
+		.data(jmp_count),
+		.seg(jmp_seg),
+		.AN(jmp_AN)
+	);
 
-	// always @(
-	//    select,
-	//    counter_AN,
-	//    counter_seg,
-	//    mem_AN,
-	//    mem_seg,
-	//    pause_AN,
-	//    pause_seg
-    // ) begin
-	// 	if (select == 0 || select == 1 || select == 2) begin
-	// 		AN = counter_AN;
-	// 		seg = ~counter_seg;
-	// 	end else if (select == 3) begin
-	// 		AN = mem_AN;
-	// 		seg = mem_seg;
-	// 	end else if (select == 4) begin
-	// 		AN = pause_AN;
-	// 		seg = pause_seg;
-	// 	end else begin
-	// 		AN = 8'hff;
-	// 		seg = 8'hff;
-	// 	end
-	// end
+	wire [31:0] branch_count;
+	wire [7:0] branch_seg, branch_AN;
+	counter branch_counter(Branch & PC_EN, CLK, RST, branch_count);
+	Display show_branch_count_display(
+		.reset(RST),
+		.clk(clk_native),
+		.data(branch_count),
+		.seg(branch_seg),
+		.AN(branch_AN)
+	);
 
-	// Information_display info(
-	// 	.clk(clk_native),
-	// 	.clk_N(CLK),
-    //   	.reset(RST),
-	// 	.conditional_branch_counter_en(Branch & PC_EN),
-	// 	.unconditional_branch_counter_en(EX_JMP & PC_EN),
-	// 	.clock_counter_en(EN),
-	// 	.select(select),
-	// 	.display(counter_seg),
-	// 	.AN(counter_AN)
-	// );
-	
+	wire [31:0] loaduse_count;
+	wire [7:0] loaduse_seg, loaduse_AN;
+	counter loaduse_counter(LoadUse & EN, CLK, RST, loaduse_count);
+	Display show_loaduse_count_display(
+		.reset(RST),
+		.clk(clk_native),
+		.data(loaduse_count),
+		.seg(loaduse_seg),
+		.AN(loaduse_AN)
+	);
+
+	wire [7:0] mem_seg, mem_AN;
+
 	up_down_ctr up_down_ctr(
 		.clk_native(clk_native),
 		.key_up(key_up),
@@ -384,5 +358,18 @@ module top(
 		.seg(mem_seg),
 		.AN(mem_AN)
 	);
+
+	assign seg = show_mem ? mem_seg : 
+					show_loaduse_count ? loaduse_seg :
+					show_conditional_branch_count ? branch_seg : 
+					show_unconditional_branch_count ? jmp_seg :
+					show_clock_count ? clock_seg :
+					sys_seg;
+	assign AN = show_mem ? mem_AN : 
+					show_loaduse_count ? loaduse_AN :
+					show_conditional_branch_count ? branch_AN : 
+					show_unconditional_branch_count ? jmp_AN :
+					show_clock_count ? clock_AN :
+					sys_AN;
 
 endmodule
