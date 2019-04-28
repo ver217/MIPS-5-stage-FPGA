@@ -39,13 +39,16 @@ module ram(
     assign __data_out_display = mem[__address_display[11:2]];
     
 //    mem[address[11:2]] >> (address[1:0] << 3) & 32h'000f;
-
+    wire [31:0] hw_in;
+    assign hw_in = (mem[address[11:2]] >> {address[1], 4'b0000}) & 32'h0000_ffff;
+    wire [31:0] hw_out;
+    signext half_word_ext(hw_in[15:0], hw_out);
     assign data_out = 
         mode == 0
             ? mem[address[11:2]]
             : mode == 1 
                 ? (mem[address[11:2]] >> {address[1:0], 3'b000}) & 32'h0000_00ff
-                : (mem[address[11:2]] >> {address[1], 4'b0000}) & 32'h0000_ffff;
+                : hw_out;
 
             // : mode == 0 
             //     ? address[1:0] == 0

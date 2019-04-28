@@ -47,6 +47,10 @@ module top_sim();
         Go = 1;
         #300
         Go = 0;
+        #3000
+        Go = 1;
+        #300
+        Go = 0;
     end
  
     always #1 clk=~clk;

@@ -41,6 +41,8 @@ module alu(
 			end
 			4'b1100: 
 				result <= (x < y) ? 32'b1 : 32'b0;
+			4'b1101:
+			    result <= y << x;
 			default:
 				result <= 0;
 		endcase
